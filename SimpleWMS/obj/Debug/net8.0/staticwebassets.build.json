@@ -1,0 +1,39 @@
+{
+  "Version": 1,
+  "Hash": "tAMZOeLQfoVr0cj7LyqcPOBAh/BEph+xt5Y/w3MHcZQ=",
+  "Source": "SimpleWMS",
+  "BasePath": "_content/SimpleWMS",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [
+    {
+      "Name": "SimpleWMS\\wwwroot",
+      "Source": "SimpleWMS",
+      "ContentRoot": "C:\\Users\\user\\Desktop\\蔡昕穎\\作品資料\\Warehouse system\\SimpleWMS\\wwwroot\\",
+      "BasePath": "_content/SimpleWMS",
+      "Pattern": "**"
+    }
+  ],
+  "Assets": [
+    {
+      "Identity": "C:\\Users\\user\\Desktop\\蔡昕穎\\作品資料\\Warehouse system\\SimpleWMS\\wwwroot\\index.html",
+      "SourceId": "SimpleWMS",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\user\\Desktop\\蔡昕穎\\作品資料\\Warehouse system\\SimpleWMS\\wwwroot\\",
+      "BasePath": "_content/SimpleWMS",
+      "RelativePath": "index.html",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\index.html"
+    }
+  ]
+}

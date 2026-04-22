@@ -1,0 +1,25 @@
+{
+  "Files": [
+    {
+      "Id": "C:\\Users\\user\\Desktop\\蔡昕穎\\作品資料\\Warehouse system\\SimpleWMS\\wwwroot\\index.html",
+      "PackagePath": "staticwebassets\\index.html"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.SimpleWMS.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.build.SimpleWMS.props",
+      "PackagePath": "build\\SimpleWMS.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildMultiTargeting.SimpleWMS.props",
+      "PackagePath": "buildMultiTargeting\\SimpleWMS.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildTransitive.SimpleWMS.props",
+      "PackagePath": "buildTransitive\\SimpleWMS.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

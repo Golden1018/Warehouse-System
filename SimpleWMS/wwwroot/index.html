@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimpleWMS — Warehouse Management</title>
+  <style>
+    /* ── Reset & Base ───────────────────────────────────── */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    /* ── Top Navigation Bar ─────────────────────────────── */
+    header {
+      background: #1a1a2e;
+      color: white;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    header .logo {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    header .logo span { color: #4ecca3; }
+
+    header .subtitle {
+      font-size: 13px;
+      color: #aaa;
+      margin-left: auto;
+    }
+
+    /* ── Main Layout ────────────────────────────────────── */
+    main {
+      max-width: 960px;
+      margin: 32px auto;
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ── Card Component ─────────────────────────────────── */
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 16px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-header .icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .card-body { padding: 24px; }
+
+    /* ── Inventory Table ────────────────────────────────── */
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .refresh-btn {
+      background: none;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #555;
+      transition: all 0.2s;
+    }
+
+    .refresh-btn:hover { background: #f5f5f5; border-color: #bbb; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    thead tr {
+      background: #f8f9fa;
+    }
+
+    th {
+      padding: 11px 16px;
+      text-align: left;
+      font-weight: 600;
+      color: #555;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #eee;
+    }
+
+    td {
+      padding: 13px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      color: #444;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+
+    .sku-badge {
+      background: #eef2ff;
+      color: #4361ee;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: monospace;
+    }
+
+    /* Quantity color coding */
+    .qty-high  { color: #2d9e6b; font-weight: 700; }
+    .qty-low   { color: #e67e22; font-weight: 700; }
+    .qty-empty { color: #e74c3c; font-weight: 700; }
+
+    /* ── Stock Actions Side-by-Side ─────────────────────── */
+    .actions-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    /* ── Form Styles ────────────────────────────────────── */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      padding: 10px 14px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+
+    input:focus, select:focus {
+      border-color: #4361ee;
+    }
+
+    /* ── Buttons ────────────────────────────────────────── */
+    .btn {
+      width: 100%;
+      padding: 11px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn:hover   { opacity: 0.88; }
+    .btn:active  { transform: scale(0.98); }
+
+    .btn-in  { background: #2d9e6b; color: white; }
+    .btn-out { background: #e74c3c; color: white; }
+
+    /* ── Toast Notification ─────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      padding: 14px 22px;
+      border-radius: 10px;
+      color: white;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      opacity: 0;
+      transition: opacity 0.3s;
+      max-width: 340px;
+      z-index: 999;
+    }
+
+    #toast.show { opacity: 1; }
+    #toast.success { background: #2d9e6b; }
+    #toast.error   { background: #e74c3c; }
+
+    /* ── Loading Spinner ────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid #ddd;
+      border-top-color: #4361ee;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Empty State ────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #aaa;
+      font-size: 15px;
+    }
+
+    /* ── Low Stock Alert Panel ──────────────────────────── */
+    #alertPanel {
+      display: none; /* hidden by default, shown when alerts exist */
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(231,76,60,0.15);
+      border: 1.5px solid #f5c6c2;
+    }
+
+    .alert-header {
+      background: #e74c3c;
+      color: white;
+      padding: 14px 24px;
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-badge {
+      background: white;
+      color: #e74c3c;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 2px 9px;
+      border-radius: 20px;
+      margin-left: 6px;
+    }
+
+    .alert-list {
+      background: #fff8f8;
+      padding: 0;
+      list-style: none;
+    }
+
+    .alert-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 13px 24px;
+      border-bottom: 1px solid #fde8e6;
+      font-size: 14px;
+    }
+
+    .alert-item:last-child { border-bottom: none; }
+
+    .alert-item .alert-icon { font-size: 18px; }
+
+    .alert-item .alert-name { font-weight: 600; color: #333; flex: 1; }
+
+    .alert-item .alert-qty {
+      font-weight: 700;
+      color: #e74c3c;
+      font-size: 13px;
+    }
+
+    .alert-item .alert-reorder {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .alert-item .alert-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .tag-out  { background: #fde8e6; color: #c0392b; }
+    .tag-low  { background: #fef3e2; color: #e67e22; }
+
+    /* ── Inventory Table — add ReorderPoint column ──────── */
+    /* (uses same th/td styles already defined above)       */
+
+    /* ── Shelf / Location Styles ────────────────────────── */
+    .shelf-badge {
+      display: inline-block;
+      background: #f0f4ff;
+      color: #4361ee;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-family: monospace;
+      letter-spacing: 0.5px;
+    }
+
+    .shelf-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+    }
+
+    .shelf-card {
+      border: 1.5px solid #e8ecff;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .shelf-card-header {
+      background: #f0f4ff;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .shelf-card-header .shelf-code {
+      font-weight: 700;
+      font-size: 15px;
+      color: #4361ee;
+      font-family: monospace;
+    }
+
+    .shelf-card-header .shelf-desc {
+      font-size: 11px;
+      color: #888;
+      margin-left: auto;
+    }
+
+    .shelf-product-list {
+      padding: 8px 14px;
+      list-style: none;
+    }
+
+    .shelf-product-list li {
+      font-size: 13px;
+      padding: 5px 0;
+      border-bottom: 1px solid #f5f5f5;
+      display: flex;
+      justify-content: space-between;
+      color: #444;
+    }
+
+    .shelf-product-list li:last-child { border-bottom: none; }
+    .shelf-empty { font-size: 13px; color: #bbb; padding: 10px 14px; }
+
+    /* ── Transaction Log Table ──────────────────────────── */
+    .type-in {
+      display: inline-block;
+      background: #e8f8f0;
+      color: #2d9e6b;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 3px 12px;
+      border-radius: 20px;
+    }
+
+    .type-out {
+      display: inline-block;
+      background: #fdecea;
+      color: #e74c3c;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 3px 12px;
+      border-radius: 20px;
+    }
+
+    .log-date {
+      font-size: 12px;
+      color: #999;
+      white-space: nowrap;
+    }
+
+    /* ── Responsive ─────────────────────────────────────── */
+    @media (max-width: 620px) {
+      .actions-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Navigation Bar ──────────────────────────────────── -->
+<header>
+  <div class="logo">Nexus<span>WMS</span></div>
+  <div class="subtitle">Simple Warehouse Management System</div>
+</header>
+
+<main>
+
+  <!-- ── Low Stock Alert Panel ───────────────────────────── -->
+  <!-- Hidden until JavaScript finds products below reorder  -->
+  <div id="alertPanel">
+    <div class="alert-header">
+      ⚠️ Low Stock Alerts
+      <span class="alert-badge" id="alertCount">0</span>
+      <span style="margin-left:auto; font-size:12px; font-weight:400; opacity:0.85;">
+        These products need to be reordered
+      </span>
+    </div>
+    <ul class="alert-list" id="alertList">
+      <!-- Alert rows are inserted here by JavaScript -->
+    </ul>
+  </div>
+
+  <!-- ── Inventory Table ─────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon" style="background:#eef2ff;">📦</div>
+      Current Inventory
+      <button class="refresh-btn" style="margin-left:auto;" onclick="loadInventory()">
+        ↻ Refresh
+      </button>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <table>
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>Product Name</th>
+            <th>Shelf</th>
+            <th>Quantity</th>
+            <th>Reorder Point</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryBody">
+          <tr>
+            <td colspan="6" class="empty-state">
+              <span class="spinner"></span> Loading inventory...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Stock In / Stock Out Forms ──────────────────────── -->
+  <div class="actions-row">
+
+    <!-- Stock IN -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon" style="background:#e8f8f0; font-size:16px;">⬇️</div>
+        Stock In
+        <span style="font-size:12px; color:#aaa; font-weight:400; margin-left:4px;">
+          — Add items to warehouse
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label for="inSku">Product SKU</label>
+          <!-- Dropdown auto-populated from the inventory list -->
+          <select id="inSku">
+            <option value="">— Select a product —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="inAmount">Amount to Add</label>
+          <input type="number" id="inAmount" placeholder="e.g. 50" min="1" />
+        </div>
+        <button class="btn btn-in" onclick="stockIn()">+ Add Stock</button>
+      </div>
+    </div>
+
+    <!-- Stock OUT -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon" style="background:#fdecea; font-size:16px;">⬆️</div>
+        Stock Out
+        <span style="font-size:12px; color:#aaa; font-weight:400; margin-left:4px;">
+          — Remove items from warehouse
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label for="outSku">Product SKU</label>
+          <select id="outSku">
+            <option value="">— Select a product —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="outAmount">Amount to Remove</label>
+          <input type="number" id="outAmount" placeholder="e.g. 10" min="1" />
+        </div>
+        <button class="btn btn-out" onclick="stockOut()">− Remove Stock</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Shelf Management + Move Product ────────────────── -->
+  <div class="actions-row">
+
+    <!-- Shelf overview -->
+    <div class="card" style="grid-column: span 1;">
+      <div class="card-header">
+        <div class="icon" style="background:#f0f4ff;">🗂️</div>
+        Shelf Locations
+        <button class="refresh-btn" style="margin-left:auto;" onclick="loadLocations()">↻ Refresh</button>
+      </div>
+      <div class="card-body">
+        <div id="shelfGrid" class="shelf-grid">
+          <div style="color:#bbb;font-size:13px;"><span class="spinner"></span> Loading...</div>
+        </div>
+
+        <!-- Add new shelf form -->
+        <hr style="margin:18px 0;border:none;border-top:1px solid #f0f0f0;">
+        <div style="font-weight:600;font-size:13px;color:#555;margin-bottom:10px;">➕ Add New Shelf</div>
+        <div class="form-group">
+          <label for="newShelfCode">Shelf Code</label>
+          <input type="text" id="newShelfCode" placeholder="e.g. D-01" style="text-transform:uppercase;" />
+        </div>
+        <div class="form-group">
+          <label for="newShelfDesc">Description (optional)</label>
+          <input type="text" id="newShelfDesc" placeholder="e.g. Aisle D, Shelf 1" />
+        </div>
+        <button class="btn btn-in" onclick="addShelf()">+ Add Shelf</button>
+      </div>
+    </div>
+
+    <!-- Move product to shelf -->
+    <div class="card" style="grid-column: span 1;">
+      <div class="card-header">
+        <div class="icon" style="background:#fff8e1;">📦</div>
+        Move Product to Shelf
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label for="moveProductSku">Product</label>
+          <select id="moveProductSku">
+            <option value="">— Select a product —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="moveLocationId">Destination Shelf</label>
+          <select id="moveLocationId">
+            <option value="">— Select a shelf —</option>
+          </select>
+        </div>
+        <button class="btn" style="background:#4361ee;color:white;" onclick="moveProduct()">
+          → Move Product
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Transaction Log ─────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon" style="background:#f0f4ff;">📋</div>
+      Transaction Log
+      <span style="font-size:12px;color:#aaa;font-weight:400;margin-left:4px;">
+        — Full history of all stock movements
+      </span>
+      <button class="refresh-btn" style="margin-left:auto;" onclick="loadLogs()">
+        ↻ Refresh
+      </button>
+    </div>
+    <div class="card-body" style="padding:0;">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date &amp; Time</th>
+            <th>SKU</th>
+            <th>Product Name</th>
+            <th>Type</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody id="logBody">
+          <tr>
+            <td colspan="6" class="empty-state">
+              <span class="spinner"></span> Loading logs...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- Toast notification element -->
+<div id="toast"></div>
+
+<script>
+  // ── Configuration ─────────────────────────────────────────
+  // Change this if your API runs on a different port.
+  const API_BASE = 'http://localhost:5000/api';
+
+  // ── Load Everything ───────────────────────────────────────
+  // Calls all sections together so the whole page is up to date.
+  async function loadInventory() {
+    loadAlerts();
+    loadInventoryTable();
+    loadLocations();
+    loadLogs();
+  }
+
+  // ── Load Inventory Table ──────────────────────────────────
+  // Fetches all products from GET /api/stock and renders them.
+  async function loadInventoryTable() {
+    const tbody = document.getElementById('inventoryBody');
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">
+      <span class="spinner"></span> Loading...</td></tr>`;
+
+    try {
+      const res  = await fetch(`${API_BASE}/stock`);
+      const data = await res.json();
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">
+          No products found.</td></tr>`;
+        return;
+      }
+
+      // Build one table row per product
+      tbody.innerHTML = data.map(p => {
+        const isOut = p.quantity === 0;
+        const isLow = p.quantity > 0 && p.quantity <= p.reorderPoint;
+
+        const qtyClass = isOut ? 'qty-empty' : isLow ? 'qty-low' : 'qty-high';
+        const status   = isOut ? '🔴 Out of Stock'
+                       : isLow ? '🟡 Low Stock'
+                       :         '🟢 In Stock';
+
+        // Show the shelf code if the product has one, otherwise "—"
+        const shelf = p.location
+          ? `<span class="shelf-badge">${p.location.shelfCode}</span>`
+          : `<span style="color:#ccc;">— Unassigned</span>`;
+
+        return `
+          <tr>
+            <td><span class="sku-badge">${p.sku}</span></td>
+            <td>${p.name}</td>
+            <td>${shelf}</td>
+            <td class="${qtyClass}">${p.quantity}</td>
+            <td style="color:#999;">${p.reorderPoint}</td>
+            <td>${status}</td>
+          </tr>`;
+      }).join('');
+
+      // Refresh both dropdowns with current SKUs
+      populateDropdowns(data);
+
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">
+        ❌ Could not connect to the API. Is the server running?</td></tr>`;
+    }
+  }
+
+  // ── Load Low Stock Alerts ─────────────────────────────────
+  // Calls GET /api/stock/alerts — returns only products that
+  // are at or below their ReorderPoint.
+  // Shows the red alert panel at the top, or hides it if
+  // everything is fine.
+  async function loadAlerts() {
+    try {
+      const res  = await fetch(`${API_BASE}/stock/alerts`);
+      const data = await res.json();
+
+      const panel = document.getElementById('alertPanel');
+      const list  = document.getElementById('alertList');
+      const badge = document.getElementById('alertCount');
+
+      // If no alerts, hide the panel completely
+      if (!data || data.length === 0) {
+        panel.style.display = 'none';
+        return;
+      }
+
+      // Show the panel and update the count badge
+      panel.style.display = 'block';
+      badge.textContent   = data.length;
+
+      // Build one list item per low-stock product
+      list.innerHTML = data.map(p => {
+        const isOut = p.quantity === 0;
+        const icon  = isOut ? '🔴' : '🟡';
+        const tag   = isOut
+          ? `<span class="alert-tag tag-out">Out of Stock</span>`
+          : `<span class="alert-tag tag-low">Low Stock</span>`;
+
+        return `
+          <li class="alert-item">
+            <span class="alert-icon">${icon}</span>
+            <span class="alert-name">${p.name}
+              <span class="sku-badge" style="margin-left:6px;">${p.sku}</span>
+            </span>
+            <span class="alert-qty">${p.quantity} left</span>
+            <span class="alert-reorder">Reorder at: ${p.reorderPoint}</span>
+            ${tag}
+          </li>`;
+      }).join('');
+
+    } catch {
+      // If the alerts call fails, just silently hide the panel
+      document.getElementById('alertPanel').style.display = 'none';
+    }
+  }
+
+  // ── Populate SKU Dropdowns ────────────────────────────────
+  // Fills ALL product <select> elements across the page:
+  //   • Stock In   (inSku)
+  //   • Stock Out  (outSku)
+  //   • Move Product form (moveProductSku)
+  function populateDropdowns(products) {
+    const options = `<option value="">— Select a product —</option>` +
+      products.map(p => {
+        const shelf = p.location ? ` @ ${p.location.shelfCode}` : '';
+        return `<option value="${p.sku}">${p.sku} — ${p.name}${shelf} (${p.quantity} in stock)</option>`;
+      }).join('');
+
+    document.getElementById('inSku').innerHTML          = options;
+    document.getElementById('outSku').innerHTML         = options;
+    document.getElementById('moveProductSku').innerHTML = options;
+  }
+
+  // ── Stock In ──────────────────────────────────────────────
+  // Reads the form values and calls POST /api/stock/in.
+  async function stockIn() {
+    const sku    = document.getElementById('inSku').value.trim();
+    const amount = parseInt(document.getElementById('inAmount').value);
+
+    // Client-side validation before sending the request
+    if (!sku)         return showToast('Please select a product.', 'error');
+    if (!amount || amount < 1)
+                      return showToast('Please enter a valid amount (min 1).', 'error');
+
+    try {
+      const res = await fetch(`${API_BASE}/stock/in`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ sku, amount })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        showToast(data.message, 'success');
+        document.getElementById('inAmount').value = '';  // clear the field
+        loadInventory();                                  // refresh the table
+      } else {
+        showToast(data.error || 'Something went wrong.', 'error');
+      }
+    } catch {
+      showToast('Cannot reach the API server.', 'error');
+    }
+  }
+
+  // ── Stock Out ─────────────────────────────────────────────
+  // Reads the form values and calls POST /api/stock/out.
+  async function stockOut() {
+    const sku    = document.getElementById('outSku').value.trim();
+    const amount = parseInt(document.getElementById('outAmount').value);
+
+    if (!sku)         return showToast('Please select a product.', 'error');
+    if (!amount || amount < 1)
+                      return showToast('Please enter a valid amount (min 1).', 'error');
+
+    try {
+      const res = await fetch(`${API_BASE}/stock/out`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ sku, amount })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        showToast(data.message, 'success');
+        document.getElementById('outAmount').value = '';
+        loadInventory();
+      } else {
+        showToast(data.error || 'Something went wrong.', 'error');
+      }
+    } catch {
+      showToast('Cannot reach the API server.', 'error');
+    }
+  }
+
+  // ── Toast Notification ────────────────────────────────────
+  // Shows a small popup message at the bottom-right corner.
+  // type = 'success' (green) or 'error' (red)
+  let toastTimer;
+  function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className   = `show ${type}`;
+
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.className = ''; }, 3500);
+  }
+
+  // ── Load Locations ────────────────────────────────────────
+  // Fetches all shelves from GET /api/location, then:
+  //   • Renders the shelf grid cards
+  //   • Populates the "Move Product" shelf dropdown
+  async function loadLocations() {
+    try {
+      const res  = await fetch(`${API_BASE}/location`);
+      const data = await res.json();
+
+      // ── Render shelf cards ──────────────────────────────
+      const grid = document.getElementById('shelfGrid');
+      if (!data || data.length === 0) {
+        grid.innerHTML = `<div style="color:#bbb;font-size:13px;">No shelves added yet.</div>`;
+      } else {
+        grid.innerHTML = data.map(loc => {
+          const productRows = loc.products.length === 0
+            ? `<div class="shelf-empty">Empty shelf</div>`
+            : `<ul class="shelf-product-list">
+                ${loc.products.map(p =>
+                  `<li><span>${p.name}</span><span style="color:#888;">${p.quantity} units</span></li>`
+                ).join('')}
+              </ul>`;
+
+          return `
+            <div class="shelf-card">
+              <div class="shelf-card-header">
+                <span class="shelf-code">${loc.shelfCode}</span>
+                <span class="shelf-desc">${loc.products.length} item(s)</span>
+              </div>
+              ${productRows}
+              <div style="padding:4px 14px 10px;font-size:11px;color:#bbb;">${loc.description}</div>
+            </div>`;
+        }).join('');
+      }
+
+      // ── Populate shelf dropdown in "Move Product" form ──
+      const shelfSelect = document.getElementById('moveLocationId');
+      shelfSelect.innerHTML = `<option value="">— Select a shelf —</option>` +
+        data.map(loc =>
+          `<option value="${loc.id}">${loc.shelfCode} — ${loc.description || 'No description'}</option>`
+        ).join('');
+
+    } catch {
+      document.getElementById('shelfGrid').innerHTML =
+        `<div style="color:#e74c3c;font-size:13px;">❌ Could not load shelves.</div>`;
+    }
+  }
+
+  // ── Add New Shelf ─────────────────────────────────────────
+  async function addShelf() {
+    const shelfCode   = document.getElementById('newShelfCode').value.trim().toUpperCase();
+    const description = document.getElementById('newShelfDesc').value.trim();
+
+    if (!shelfCode) return showToast('Please enter a shelf code.', 'error');
+
+    try {
+      const res = await fetch(`${API_BASE}/location`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ shelfCode, description })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        showToast(data.message, 'success');
+        document.getElementById('newShelfCode').value = '';
+        document.getElementById('newShelfDesc').value = '';
+        loadLocations(); // refresh the shelf grid
+      } else {
+        showToast(data.error || 'Failed to create shelf.', 'error');
+      }
+    } catch {
+      showToast('Cannot reach the API server.', 'error');
+    }
+  }
+
+  // ── Move Product to Shelf ─────────────────────────────────
+  async function moveProduct() {
+    const sku        = document.getElementById('moveProductSku').value.trim();
+    const locationId = parseInt(document.getElementById('moveLocationId').value);
+
+    if (!sku)        return showToast('Please select a product.', 'error');
+    if (!locationId) return showToast('Please select a shelf.', 'error');
+
+    try {
+      const res = await fetch(`${API_BASE}/location/assign`, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ sku, locationId })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        showToast(data.message, 'success');
+        loadInventory(); // refresh everything
+      } else {
+        showToast(data.error || 'Failed to move product.', 'error');
+      }
+    } catch {
+      showToast('Cannot reach the API server.', 'error');
+    }
+  }
+
+  // ── Load Transaction Logs ────────────────────────────────
+  // Fetches all log entries from GET /api/stock/logs and
+  // renders them in the log table, newest entry at the top.
+  async function loadLogs() {
+    const tbody = document.getElementById('logBody');
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">
+      <span class="spinner"></span> Loading logs...</td></tr>`;
+
+    try {
+      const res  = await fetch(`${API_BASE}/stock/logs`);
+      const data = await res.json();
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">
+          No transactions recorded yet.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map(log => {
+        // Format the date nicely: "2025-01-15 14:32:05"
+        const d    = new Date(log.date);
+        const date = d.toLocaleDateString();
+        const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        // Green badge for "In", red badge for "Out"
+        const typeBadge = log.type === 'In'
+          ? `<span class="type-in">▼ In</span>`
+          : `<span class="type-out">▲ Out</span>`;
+
+        // Amount shown in green for In, red for Out
+        const amtColor = log.type === 'In' ? '#2d9e6b' : '#e74c3c';
+        const amtSign  = log.type === 'In' ? '+' : '−';
+
+        return `
+          <tr>
+            <td style="color:#bbb;font-size:12px;">#${log.id}</td>
+            <td class="log-date">${date}<br>${time}</td>
+            <td><span class="sku-badge">${log.sku}</span></td>
+            <td>${log.productName}</td>
+            <td>${typeBadge}</td>
+            <td style="font-weight:700;color:${amtColor};">${amtSign}${log.amount}</td>
+          </tr>`;
+      }).join('');
+
+    } catch {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">
+        ❌ Could not load logs.</td></tr>`;
+    }
+  }
+
+  // ── Load on page open ─────────────────────────────────────
+  // As soon as the page loads, fetch everything immediately.
+  loadInventory();
+</script>
+
+</body>
+</html>
